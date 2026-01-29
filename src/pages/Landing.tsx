@@ -1,4 +1,4 @@
-// kkkkkk
+// kkkkkkgit
 import { LandingHero } from "@/components/LandingHero";
 import { FeaturesSection } from "@/components/FeaturesSection";
 import { Button } from "@/components/ui/button";
