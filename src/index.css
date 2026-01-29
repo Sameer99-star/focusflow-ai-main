@@ -1,0 +1,274 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* FocusFlow AI Design System
+   Calm, focused, productivity-oriented
+   Warm off-white / charcoal palette
+   Muted teal/sage primary, soft lavender accent
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    /* Warm off-white backgrounds */
+    --background: 40 20% 98%;
+    --foreground: 220 20% 10%;
+
+    /* Cards - slightly warmer */
+    --card: 40 15% 99%;
+    --card-foreground: 220 20% 10%;
+
+    /* Popover */
+    --popover: 40 15% 99%;
+    --popover-foreground: 220 20% 10%;
+
+    /* Primary - Muted Teal/Sage */
+    --primary: 168 40% 40%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 168 50% 50%;
+
+    /* Secondary */
+    --secondary: 40 10% 94%;
+    --secondary-foreground: 220 20% 20%;
+
+    /* Muted */
+    --muted: 40 10% 92%;
+    --muted-foreground: 220 10% 45%;
+
+    /* Accent - Soft Lavender/Indigo */
+    --accent: 255 30% 60%;
+    --accent-foreground: 0 0% 100%;
+    --accent-glow: 255 40% 70%;
+
+    /* Success - Calm Green */
+    --success: 150 40% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning - Warm Amber */
+    --warning: 45 90% 55%;
+    --warning-foreground: 30 50% 15%;
+
+    /* Destructive */
+    --destructive: 0 60% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
+    --border: 40 15% 88%;
+    --input: 40 15% 88%;
+    --ring: 168 40% 40%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar */
+    --sidebar-background: 40 15% 96%;
+    --sidebar-foreground: 220 15% 25%;
+    --sidebar-primary: 168 40% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 255 25% 95%;
+    --sidebar-accent-foreground: 255 30% 40%;
+    --sidebar-border: 40 15% 90%;
+    --sidebar-ring: 168 40% 40%;
+
+    /* Custom gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(168 40% 40%), hsl(168 50% 50%));
+    --gradient-accent: linear-gradient(135deg, hsl(255 30% 60%), hsl(255 40% 70%));
+    --gradient-hero: linear-gradient(135deg, hsl(40 20% 98%), hsl(168 20% 96%));
+    --gradient-card: linear-gradient(180deg, hsl(40 15% 99%), hsl(40 10% 97%));
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(220 20% 10% / 0.03);
+    --shadow-md: 0 4px 6px -1px hsl(220 20% 10% / 0.05), 0 2px 4px -2px hsl(220 20% 10% / 0.03);
+    --shadow-lg: 0 10px 15px -3px hsl(220 20% 10% / 0.05), 0 4px 6px -4px hsl(220 20% 10% / 0.03);
+    --shadow-glow: 0 0 20px hsl(168 40% 40% / 0.15);
+    --shadow-accent-glow: 0 0 20px hsl(255 30% 60% / 0.2);
+
+    /* Progress bar */
+    --progress-track: 40 10% 92%;
+    --progress-fill: 168 40% 40%;
+  }
+
+  .dark {
+    /* Charcoal backgrounds */
+    --background: 220 15% 8%;
+    --foreground: 40 10% 95%;
+
+    --card: 220 15% 10%;
+    --card-foreground: 40 10% 95%;
+
+    --popover: 220 15% 10%;
+    --popover-foreground: 40 10% 95%;
+
+    /* Primary - Brighter teal for dark mode */
+    --primary: 168 45% 50%;
+    --primary-foreground: 220 15% 8%;
+    --primary-glow: 168 50% 60%;
+
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 40 10% 90%;
+
+    --muted: 220 15% 18%;
+    --muted-foreground: 40 10% 60%;
+
+    /* Accent - Brighter lavender for dark mode */
+    --accent: 255 35% 65%;
+    --accent-foreground: 220 15% 8%;
+    --accent-glow: 255 40% 75%;
+
+    --success: 150 45% 50%;
+    --success-foreground: 220 15% 8%;
+
+    --warning: 45 90% 60%;
+    --warning-foreground: 30 50% 10%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 168 45% 50%;
+
+    --sidebar-background: 220 15% 6%;
+    --sidebar-foreground: 40 10% 85%;
+    --sidebar-primary: 168 45% 50%;
+    --sidebar-primary-foreground: 220 15% 8%;
+    --sidebar-accent: 255 20% 15%;
+    --sidebar-accent-foreground: 255 35% 70%;
+    --sidebar-border: 220 15% 15%;
+    --sidebar-ring: 168 45% 50%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(168 45% 50%), hsl(168 50% 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(255 35% 65%), hsl(255 40% 75%));
+    --gradient-hero: linear-gradient(135deg, hsl(220 15% 8%), hsl(220 20% 12%));
+    --gradient-card: linear-gradient(180deg, hsl(220 15% 10%), hsl(220 15% 8%));
+
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.2);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.3), 0 4px 6px -4px hsl(0 0% 0% / 0.2);
+    --shadow-glow: 0 0 30px hsl(168 45% 50% / 0.2);
+    --shadow-accent-glow: 0 0 30px hsl(255 35% 65% / 0.25);
+
+    --progress-track: 220 15% 18%;
+    --progress-fill: 168 45% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+}
+
+@layer utilities {
+  /* Smooth transitions */
+  .transition-smooth {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .transition-slower {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  /* Card hover effects */
+  .card-hover {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Button micro-interactions */
+  .btn-press:active {
+    transform: scale(0.98);
+  }
+
+  /* Gradient text */
+  .text-gradient-primary {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-accent {
+    background: var(--gradient-accent);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .glow-accent {
+    box-shadow: var(--shadow-accent-glow);
+  }
+
+  /* Focus mode */
+  .focus-mode {
+    @apply transition-opacity duration-500;
+  }
+
+  .focus-mode-hidden {
+    @apply opacity-0 pointer-events-none;
+  }
+
+  /* Progress bar glow on hover */
+  .progress-glow:hover {
+    box-shadow: 0 0 12px hsl(var(--primary) / 0.3);
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply animate-pulse bg-muted rounded;
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .transition-smooth,
+    .transition-slower,
+    .card-hover {
+      transition: none;
+    }
+    
+    .card-hover:hover {
+      transform: none;
+    }
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
