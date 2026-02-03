@@ -10,9 +10,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { isYouTubeUrl, isPlaylistUrl, formatDuration } from "@/lib/youtube";
+import { fetchPlaylistFromEdge } from "@/lib/youtube";
 
 interface VideoData {
   id: string;
@@ -43,7 +43,7 @@ export function YouTubeImportDialog({
 
   const handleParse = async () => {
     setError(null);
-    
+
     if (!url.trim()) {
       setError("Please enter a YouTube URL");
       return;
@@ -62,13 +62,9 @@ export function YouTubeImportDialog({
     setIsLoading(true);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("parse-youtube", {
-        body: { url },
-      });
+      const data = await fetchPlaylistFromEdge(url);
 
-      if (fnError) throw fnError;
-
-      if (data.error) {
+      if (data?.error) {
         setError(data.error);
         return;
       }
@@ -88,10 +84,12 @@ export function YouTubeImportDialog({
 
   const handleImport = () => {
     if (!preview) return;
+
     onImport(preview.videos, preview.title);
     onOpenChange(false);
     setUrl("");
     setPreview(null);
+
     toast({
       title: "Playlist imported! 🎉",
       description: `${preview.videos.length} videos added to your schedule.`,
@@ -157,7 +155,9 @@ export function YouTubeImportDialog({
           ) : (
             <>
               <div className="p-4 rounded-xl bg-muted/50 border border-border">
-                <h3 className="font-semibold text-foreground mb-3">{preview.title}</h3>
+                <h3 className="font-semibold text-foreground mb-3">
+                  {preview.title}
+                </h3>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1.5">
                     <Video className="w-4 h-4" />
@@ -189,15 +189,14 @@ export function YouTubeImportDialog({
                     </span>
                   </div>
                 ))}
-                {preview.videos.length > 10 && (
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    +{preview.videos.length - 10} more videos
-                  </p>
-                )}
               </div>
 
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setPreview(null)} className="flex-1">
+                <Button
+                  variant="outline"
+                  onClick={() => setPreview(null)}
+                  className="flex-1"
+                >
                   Back
                 </Button>
                 <Button onClick={handleImport} className="flex-1">
