@@ -73,6 +73,8 @@ export function formatDuration(minutes: number): string {
   const mins = minutes % 60;
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
+
+// 🔗 Call Supabase Edge Function to parse playlist
 export async function fetchPlaylistFromEdge(url: string) {
   const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
   const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -81,24 +83,23 @@ export async function fetchPlaylistFromEdge(url: string) {
     throw new Error("Supabase env variables missing");
   }
 
-  const res = await fetch(
+  const response = await fetch(
     `${SUPABASE_URL}/functions/v1/parse-youtube`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-        "apikey": SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({ url }),
     }
   );
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Edge function error: ${text}`);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Failed to call edge function");
   }
 
-  return await res.json();
+  return response.json();
 }
-

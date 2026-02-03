@@ -11,8 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { isYouTubeUrl, isPlaylistUrl, formatDuration } from "@/lib/youtube";
-import { fetchPlaylistFromEdge } from "@/lib/youtube";
+import {
+  isYouTubeUrl,
+  isPlaylistUrl,
+  formatDuration,
+  fetchPlaylistFromEdge,
+} from "@/lib/youtube";
 
 interface VideoData {
   id: string;
@@ -65,7 +69,15 @@ export function YouTubeImportDialog({
       const data = await fetchPlaylistFromEdge(url);
 
       if (data?.error) {
-        setError(data.error);
+        const msg = data.error.toLowerCase();
+
+        if (msg.includes("not found") || msg.includes("private")) {
+          setError("This playlist is private, deleted, or unavailable");
+        } else if (msg.includes("invalid")) {
+          setError("Invalid playlist URL");
+        } else {
+          setError("Failed to fetch playlist. Please try again.");
+        }
         return;
       }
 
@@ -75,9 +87,21 @@ export function YouTubeImportDialog({
         totalDuration: data.totalDuration,
       });
     } catch (err: any) {
-      console.error("YouTube parse error:", err);
-      setError(err.message || "Failed to parse YouTube playlist");
-    } finally {
+  console.error("YouTube parse error:", err);
+
+  const message = err?.message?.toLowerCase?.() || "";
+
+  if (
+    message.includes("private") ||
+    message.includes("not found") ||
+    message.includes("playlist")
+  ) {
+    setError("This playlist is private, deleted, or unavailable");
+  } else {
+    setError("Something went wrong while parsing the playlist");
+  }
+}
+ finally {
       setIsLoading(false);
     }
   };
