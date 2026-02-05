@@ -27,6 +27,7 @@ export interface RoadmapData {
   dailyLimit: number;
   startDate?: string;
   sourceUrl?: string;
+  isPaused?: boolean;
   days: DayData[];
 }
 
@@ -147,6 +148,14 @@ export function useRoadmap() {
 
   // Toggle session completion
   const toggleSessionComplete = useCallback(async (sessionId: string) => {
+      if (activeRoadmap?.isPaused) {
+    toast({
+      title: "Roadmap is paused",
+      description: "Resume the roadmap to mark sessions complete",
+    });
+    return;
+  }
+
     if (!activeRoadmap) return;
 
     // Find the session
@@ -359,16 +368,215 @@ export function useRoadmap() {
     completedSessions: activeRoadmap.days.flatMap(d => d.sessions).filter(s => s.completed).length,
     currentDay: activeRoadmap.days.find(d => d.isToday)?.dayNumber || 1,
   } : null;
+    const rebalanceActiveRoadmap = useCallback(
+    async (newDailyLimit: number) => {
+      if (!activeRoadmap || !user) return;
+
+      try {
+        // 1. Update daily limit
+        await supabase
+          .from("roadmaps")
+          .update({ daily_limit: newDailyLimit })
+          .eq("id", activeRoadmap.id);
+
+        // 2. Collect all sessions (flatten)
+        const allSessions = activeRoadmap.days
+          .flatMap(d => d.sessions)
+          .sort((a, b) => a.orderIndex - b.orderIndex);
+
+        // 3. Delete old days
+        await supabase
+          .from("roadmap_days")
+          .delete()
+          .eq("roadmap_id", activeRoadmap.id);
+
+        // 4. Recreate days based on new limit
+        let dayNumber = 1;
+        let dayDuration = 0;
+        let currentDaySessions: Session[] = [];
+
+        const newDays: { dayNumber: number; sessions: Session[] }[] = [];
+
+        for (const session of allSessions) {
+          if (
+            dayDuration + session.duration > newDailyLimit &&
+            currentDaySessions.length > 0
+          ) {
+            newDays.push({
+              dayNumber,
+              sessions: [...currentDaySessions],
+            });
+            dayNumber++;
+            dayDuration = 0;
+            currentDaySessions = [];
+          }
+
+          currentDaySessions.push(session);
+          dayDuration += session.duration;
+        }
+
+        if (currentDaySessions.length > 0) {
+          newDays.push({
+            dayNumber,
+            sessions: currentDaySessions,
+          });
+        }
+
+        // 5. Insert new days & move sessions
+        for (const day of newDays) {
+          const { data: dayRow } = await supabase
+            .from("roadmap_days")
+            .insert({
+              roadmap_id: activeRoadmap.id,
+              day_number: day.dayNumber,
+            })
+            .select()
+            .single();
+
+          if (!dayRow) continue;
+
+          for (let i = 0; i < day.sessions.length; i++) {
+            await supabase
+              .from("sessions")
+              .update({
+                day_id: dayRow.id,
+                order_index: i,
+              })
+              .eq("id", day.sessions[i].id);
+          }
+        }
+
+        await fetchRoadmaps();
+
+        toast({
+          title: "Roadmap rebalanced",
+          description: `Daily limit updated to ${newDailyLimit} minutes`,
+        });
+      } catch (err) {
+        console.error(err);
+        toast({
+          title: "Error",
+          description: "Failed to rebalance roadmap",
+          variant: "destructive",
+        });
+      }
+    },
+    [activeRoadmap, user, fetchRoadmaps]
+  );
+
+    const createDayWithSessions = async (
+    dayNumber: number,
+    sessions: Session[]
+  ) => {
+    if (!activeRoadmap) return;
+
+    // 1️⃣ Create day
+    const { data: dayData, error: dayError } = await supabase
+      .from("roadmap_days")
+      .insert({
+        roadmap_id: activeRoadmap.id,
+        day_number: dayNumber,
+      })
+      .select()
+      .single();
+
+    if (dayError) throw dayError;
+
+    // 2️⃣ Insert sessions
+    const sessionRows = sessions.map((s, index) => ({
+      day_id: dayData.id,
+      title: s.title,
+      duration: s.duration,
+      youtube_video_id: s.youtubeVideoId || null,
+      order_index: index,
+      is_completed: s.completed ?? false,
+    }));
+
+    const { error: sessionsError } = await supabase
+      .from("sessions")
+      .insert(sessionRows);
+
+    if (sessionsError) throw sessionsError;
+  };
+
+
+   // Rebalance roadmap when daily limit changes
+  const rebalanceRoadmap = useCallback(
+    async (newDailyLimit: number) => {
+      if (!activeRoadmap) return;
+
+      try {
+        // 1️⃣ Collect all sessions in order
+        const allSessions = activeRoadmap.days
+          .flatMap((d) => d.sessions)
+          .sort((a, b) => a.orderIndex - b.orderIndex);
+
+        // 2️⃣ Delete existing days (sessions will cascade if FK is set)
+        await supabase
+          .from("roadmap_days")
+          .delete()
+          .eq("roadmap_id", activeRoadmap.id);
+
+        // 3️⃣ Redistribute sessions
+        let dayNumber = 1;
+        let dayDuration = 0;
+        let daySessions: typeof allSessions = [];
+
+        for (const session of allSessions) {
+          if (
+            dayDuration + session.duration > newDailyLimit &&
+            daySessions.length > 0
+          ) {
+            await createDayWithSessions(dayNumber, daySessions);
+            dayNumber++;
+            dayDuration = 0;
+            daySessions = [];
+          }
+
+          daySessions.push(session);
+          dayDuration += session.duration;
+        }
+
+        if (daySessions.length > 0) {
+          await createDayWithSessions(dayNumber, daySessions);
+        }
+
+        // 4️⃣ Update roadmap daily limit
+        await supabase
+          .from("roadmaps")
+          .update({ daily_limit: newDailyLimit })
+          .eq("id", activeRoadmap.id);
+
+        // 5️⃣ Refresh UI
+        await fetchRoadmaps();
+
+        toast({
+          title: "Roadmap rebalanced",
+          description: `Daily limit updated to ${newDailyLimit} minutes`,
+        });
+      } catch (error) {
+        console.error(error);
+        toast({
+          title: "Error",
+          description: "Failed to rebalance roadmap",
+          variant: "destructive",
+        });
+      }
+    },
+    [activeRoadmap, fetchRoadmaps]
+  );
+
 
   return {
-    roadmaps,
-    activeRoadmap,
-    setActiveRoadmap,
-    isLoading,
-    stats,
-    toggleSessionComplete,
-    createRoadmap,
-    deleteRoadmap,
-    refetch: fetchRoadmaps,
-  };
+  roadmaps,
+  activeRoadmap,
+  setActiveRoadmap,
+  isLoading,
+  stats,
+  toggleSessionComplete,
+  createRoadmap,
+  rebalanceActiveRoadmap,
+  deleteRoadmap,
+  refetch: fetchRoadmaps,
+ };
 }

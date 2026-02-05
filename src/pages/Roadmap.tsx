@@ -1,5 +1,17 @@
 import { useState } from "react";
-import { Calendar, Clock, Pause, Play, RotateCcw, Plus, Sparkles, ArrowLeft, Download, Youtube } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  Pause,
+  Play,
+  RotateCcw,
+  Plus,
+  Sparkles,
+  ArrowLeft,
+  Download,
+  Youtube,
+} from "lucide-react";
+
 import { RoadmapScheduler } from "@/components/RoadmapScheduler";
 import { RoadmapDesigner } from "@/components/roadmap/RoadmapDesigner";
 import { CalendarExportDialog } from "@/components/roadmap/CalendarExportDialog";
@@ -8,6 +20,10 @@ import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/ProgressBar";
 import { cn } from "@/lib/utils";
 import { useRoadmap } from "@/hooks/use-roadmap";
+
+/* =========================
+   TYPES
+========================= */
 
 interface Session {
   id: string;
@@ -25,176 +41,163 @@ interface DayData {
 
 type ViewMode = "roadmap" | "scheduler" | "designer";
 
+/* =========================
+   PAGE
+========================= */
+
 export default function Roadmap() {
-  const [isPaused, setIsPaused] = useState(false);
-  const [localDailyLimit, setLocalDailyLimit] = useState(60);
+  /* ---------------- STATE ---------------- */
+
   const [viewMode, setViewMode] = useState<ViewMode>("roadmap");
+
+  const [isPaused, setIsPaused] = useState(false);
+
+  const [localDailyLimit, setLocalDailyLimit] = useState(60);
+
+  const [pendingDailyLimit, setPendingDailyLimit] =
+    useState<number | null>(null);
+
+  const [showRebalanceConfirm, setShowRebalanceConfirm] = useState(false);
+
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
+
   const [youtubeDialogOpen, setYoutubeDialogOpen] = useState(false);
 
-  const { 
-    activeRoadmap, 
-    stats, 
-    isLoading, 
-    createRoadmap, 
-    toggleSessionComplete 
-  } = useRoadmap();
+  /* ---------------- HOOK ---------------- */
 
-  // Convert activeRoadmap to display format for existing components
-  const roadmapData: DayData[] = activeRoadmap?.days.map(day => ({
-    day: day.dayNumber,
-    sessions: day.sessions.map(s => ({
-      id: s.id,
-      title: s.title,
-      duration: s.duration,
-      completed: s.completed,
-    })),
-    isToday: day.isToday,
-    isCompleted: day.isCompleted,
-  })) || [];
+  const { 
+  activeRoadmap, 
+  stats, 
+  createRoadmap, 
+  toggleSessionComplete,
+  rebalanceActiveRoadmap
+} = useRoadmap();
+
+
+  /* ---------------- DATA MAPPING ---------------- */
+
+  const roadmapData: DayData[] =
+    activeRoadmap?.days.map((day) => ({
+      day: day.dayNumber,
+      sessions: day.sessions.map((s) => ({
+        id: s.id,
+        title: s.title,
+        duration: s.duration,
+        completed: s.completed,
+      })),
+      isToday: day.isToday,
+      isCompleted: day.isCompleted,
+    })) || [];
 
   const dailyLimit = activeRoadmap?.dailyLimit || localDailyLimit;
-  const courseName = activeRoadmap?.title || "No active roadmap";
-  const setDailyLimit = setLocalDailyLimit;
-
-  const handleYoutubeImport = async (videos: { id: string; title: string; duration: number }[], playlistTitle: string) => {
-    await createRoadmap(playlistTitle, videos, dailyLimit);
-  };
+  const courseName = activeRoadmap?.title || "Roadmap";
 
   const completedDays = stats?.completedDays || 0;
   const totalDays = stats?.totalDays || 0;
   const completedSessions = stats?.completedSessions || 0;
   const totalSessions = stats?.totalSessions || 0;
 
-  // Scheduler view
+  /* ---------------- HANDLERS ---------------- */
+
+  const handleYoutubeImport = async (
+    videos: { id: string; title: string; duration: number }[],
+    playlistTitle: string
+  ) => {
+    await createRoadmap(playlistTitle, videos, dailyLimit);
+  };
+
+  /* =====================================================
+     SCHEDULER VIEW
+  ===================================================== */
+
   if (viewMode === "scheduler") {
     return (
-      <div className="min-h-screen p-4 md:p-8 animate-fade-in">
-        <div className="max-w-3xl mx-auto">
-          <div className="mb-8">
-            <Button 
-              variant="ghost" 
-              onClick={() => setViewMode("roadmap")}
-              className="mb-4"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Roadmap
-            </Button>
-          </div>
-          <RoadmapScheduler 
-            onScheduleCreated={(items) => {
-              console.log("Schedule created:", items);
-              setViewMode("roadmap");
-            }}
-          />
-        </div>
+      <div className="min-h-screen p-6">
+        <Button variant="ghost" onClick={() => setViewMode("roadmap")}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+
+        <RoadmapScheduler
+          onScheduleCreated={() => setViewMode("roadmap")}
+        />
       </div>
     );
   }
 
-  // Designer view
+  /* =====================================================
+     DESIGNER VIEW
+  ===================================================== */
+
   if (viewMode === "designer") {
     return (
-      <div className="min-h-screen p-4 md:p-8 animate-fade-in">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                onClick={() => setViewMode("roadmap")}
-                size="icon"
+      <div className="min-h-screen p-6">
+        <div className="flex items-center justify-between mb-6">
+          <Button variant="ghost" onClick={() => setViewMode("roadmap")}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+
+          <div className="flex gap-2">
+            {[60, 90, 120, 180].map((limit) => (
+              <Button
+                key={limit}
+                size="sm"
+                variant={dailyLimit === limit ? "default" : "outline"}
+                onClick={() => {
+                  setPendingDailyLimit(limit);
+                  setShowRebalanceConfirm(true);
+                }}
               >
-                <ArrowLeft className="w-5 h-5" />
+                {limit}m
               </Button>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-1">
-                  Schedule Designer
-                </h1>
-                <p className="text-muted-foreground">
-                  Drag and drop to customize your learning schedule
-                </p>
-              </div>
-            </div>
-
-            {/* Daily limit selector */}
-            <div className="flex items-center gap-3 bg-card p-3 rounded-xl border border-border">
-              <Clock className="w-5 h-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Daily limit:</span>
-              <div className="flex items-center gap-1.5">
-                {[60, 90, 120, 180].map((limit) => (
-                  <button
-                    key={limit}
-                    onClick={() => setDailyLimit(limit)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200",
-                      dailyLimit === limit
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                    )}
-                  >
-                    {limit}m
-                  </button>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
-
-          <RoadmapDesigner 
-            initialData={roadmapData}
-            dailyLimit={dailyLimit}
-            onSave={(_data) => {
-              // For now just close the designer - data sync can be added later
-              setViewMode("roadmap");
-            }}
-          />
         </div>
+
+        <RoadmapDesigner
+          initialData={roadmapData}
+          dailyLimit={dailyLimit}
+          onSave={() => setViewMode("roadmap")}
+        />
       </div>
     );
   }
 
-  // Main roadmap view
-  return (
-    <div className="min-h-screen p-4 md:p-8 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">Your Roadmap</h1>
-          <p className="text-muted-foreground">
-            React Fundamentals Course • {totalDays} days • {totalSessions} sessions
-          </p>
-        </div>
+  /* =====================================================
+     MAIN ROADMAP VIEW
+  ===================================================== */
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setYoutubeDialogOpen(true)}
-          >
+  return (
+    <div className="min-h-screen p-6">
+
+      {/* ================= HEADER ================= */}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
+        <h1 className="text-2xl font-bold">Your Roadmap</h1>
+
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => setYoutubeDialogOpen(true)} variant="outline">
             <Youtube className="w-4 h-4 mr-2" />
-            Import YouTube
+            Import
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setCalendarDialogOpen(true)}
-          >
+
+          <Button onClick={() => setCalendarDialogOpen(true)} variant="outline">
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setViewMode("scheduler")}
-          >
+
+          <Button onClick={() => setViewMode("scheduler")} variant="outline">
             <Plus className="w-4 h-4 mr-2" />
-            New Schedule
+            New
           </Button>
-          <Button
-            variant="hero"
-            onClick={() => setViewMode("designer")}
-          >
+
+          <Button onClick={() => setViewMode("designer")}>
             <Sparkles className="w-4 h-4 mr-2" />
-            Design Mode
+            Design
           </Button>
-          <Button 
+
+          <Button
             variant={isPaused ? "default" : "outline"}
             onClick={() => setIsPaused(!isPaused)}
           >
@@ -213,7 +216,8 @@ export default function Roadmap() {
         </div>
       </div>
 
-      {/* Calendar Export Dialog */}
+      {/* ================= DIALOGS ================= */}
+
       <CalendarExportDialog
         open={calendarDialogOpen}
         onOpenChange={setCalendarDialogOpen}
@@ -221,229 +225,131 @@ export default function Roadmap() {
         courseName={courseName}
       />
 
-      {/* YouTube Import Dialog */}
       <YouTubeImportDialog
         open={youtubeDialogOpen}
         onOpenChange={setYoutubeDialogOpen}
         onImport={handleYoutubeImport}
       />
 
-      {/* Stats cards */}
+      {/* ================= STATS ================= */}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-card p-4 rounded-2xl border border-border shadow-soft-sm">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <Calendar className="w-4 h-4" />
-            Progress
-          </div>
-          <div className="text-2xl font-bold text-foreground">
-            {completedDays}/{totalDays} days
-          </div>
-          <div className="h-1.5 rounded-full bg-secondary mt-2 overflow-hidden">
-            <div 
-              className="h-full rounded-full bg-primary transition-all duration-500"
-              style={{ width: `${(completedDays / totalDays) * 100}%` }}
-            />
-          </div>
-        </div>
-        <div className="bg-card p-4 rounded-2xl border border-border shadow-soft-sm">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <Sparkles className="w-4 h-4" />
-            Sessions
-          </div>
-          <div className="text-2xl font-bold text-foreground">
-            {completedSessions}/{totalSessions}
-          </div>
-          <div className="h-1.5 rounded-full bg-secondary mt-2 overflow-hidden">
-            <div 
-              className="h-full rounded-full bg-success transition-all duration-500"
-              style={{ width: `${(completedSessions / totalSessions) * 100}%` }}
-            />
-          </div>
-        </div>
-        <div className="bg-card p-4 rounded-2xl border border-border shadow-soft-sm">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <Clock className="w-4 h-4" />
-            Daily Limit
-          </div>
-          <div className="text-2xl font-bold text-foreground">{dailyLimit} min</div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {Math.floor(dailyLimit / 60)}h {dailyLimit % 60}m per day
-          </p>
-        </div>
-        <div className="bg-card p-4 rounded-2xl border border-border shadow-soft-sm">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <Calendar className="w-4 h-4" />
-            Est. Finish
-          </div>
-          <div className="text-2xl font-bold text-foreground">Jan 27</div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {totalDays - completedDays} days remaining
-          </p>
-        </div>
+        <StatCard
+          icon={<Calendar className="w-4 h-4" />}
+          label="Days"
+          value={`${completedDays}/${totalDays}`}
+        />
+        <StatCard
+          icon={<Sparkles className="w-4 h-4" />}
+          label="Sessions"
+          value={`${completedSessions}/${totalSessions}`}
+        />
+        <StatCard
+          icon={<Clock className="w-4 h-4" />}
+          label="Daily Limit"
+          value={`${dailyLimit} min`}
+        />
+        <StatCard
+          icon={<Calendar className="w-4 h-4" />}
+          label="Remaining"
+          value={`${totalDays - completedDays} days`}
+        />
       </div>
 
-      {/* Progress overview */}
-      <div className="bg-card rounded-2xl p-6 border border-border shadow-soft-md mb-8">
-        <ProgressBar currentDay={completedDays + 1} totalDays={totalDays} />
-      </div>
+      {/* ================= PROGRESS ================= */}
 
-      {/* Quick access to designer */}
-      <div 
-        onClick={() => setViewMode("designer")}
-        className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-2xl p-6 border border-primary/20 mb-8 cursor-pointer hover:border-primary/40 transition-all group"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Sparkles className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground text-lg">Customize Your Schedule</h3>
-              <p className="text-muted-foreground text-sm">
-                Drag & drop sessions, add new content, and rebalance your learning path
-              </p>
-            </div>
-          </div>
-          <Button variant="ghost" className="shrink-0">
-            Open Designer →
-          </Button>
-        </div>
-      </div>
+      <ProgressBar currentDay={completedDays + 1} totalDays={totalDays} />
 
-      {/* Settings bar */}
-      <div className="flex flex-wrap items-center gap-4 md:gap-6 mb-8 p-4 bg-card rounded-xl border border-border">
-        <div className="flex items-center gap-3">
-          <Clock className="w-5 h-5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Daily limit:</span>
-          <div className="flex items-center gap-2">
-            {[60, 90, 120, 180].map((limit) => (
-              <button
-                key={limit}
-                onClick={() => setDailyLimit(limit)}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  dailyLimit === limit
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                )}
-              >
-                {limit}m
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex-1" />
-        <Button variant="outline" size="sm">
-          <RotateCcw className="w-4 h-4 mr-2" />
-          Rebalance Days
-        </Button>
-      </div>
+      {/* ================= DAY GRID ================= */}
 
-      {/* Roadmap preview grid */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {roadmapData.slice(0, 8).map((day, index) => (
-          <div 
-            key={day.day} 
-            className="animate-fade-in-up"
-            style={{ animationDelay: `${index * 0.05}s` }}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
+        {roadmapData.map((day) => (
+          <div
+            key={day.day}
+            className="bg-card border rounded-xl p-4 cursor-pointer hover:shadow-md"
             onClick={() => setViewMode("designer")}
           >
-            <div className={cn(
-              "bg-card rounded-xl p-5 border transition-all duration-200 cursor-pointer group hover:border-primary/30 hover:shadow-soft-md",
-              day.isToday && "border-primary shadow-glow",
-              day.isCompleted && "border-success/50",
-              !day.isToday && !day.isCompleted && "border-border"
-            )}>
-              {/* Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div 
-                    className={cn(
-                      "w-10 h-10 rounded-lg flex items-center justify-center font-semibold transition-transform group-hover:scale-110",
-                      day.isToday && "bg-primary text-primary-foreground",
-                      day.isCompleted && "bg-success text-success-foreground",
-                      !day.isToday && !day.isCompleted && "bg-secondary text-secondary-foreground"
-                    )}
-                  >
-                    {day.day}
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-foreground">
-                      {day.isToday ? "Today" : `Day ${day.day}`}
-                    </h3>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {day.sessions.reduce((acc, s) => acc + s.duration, 0)} min
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <h3 className="font-semibold mb-2">Day {day.day}</h3>
 
-              {/* Sessions */}
-              <div className="space-y-2">
-                {day.sessions.map((session) => (
-                  <div 
-                    key={session.id}
-                    className={cn(
-                      "flex items-center gap-2 p-2 rounded-lg text-sm transition-colors",
-                      session.completed 
-                        ? "bg-success/5 text-muted-foreground" 
-                        : "bg-secondary/50"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0",
-                      session.completed 
-                        ? "bg-success text-success-foreground" 
-                        : "border border-muted-foreground/30"
-                    )}>
-                      {session.completed && <span className="text-[10px]">✓</span>}
-                    </div>
-                    <span className={cn(
-                      "flex-1 truncate",
-                      session.completed && "line-through"
-                    )}>
-                      {session.title}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {session.duration}m
-                    </span>
-                  </div>
-                ))}
+            {day.sessions.map((session) => (
+              <div
+                key={session.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleSessionComplete(session.id);
+                }}
+                className="text-sm flex justify-between py-1"
+              >
+                <span
+                  className={cn(session.completed && "line-through opacity-50")}
+                >
+                  {session.title}
+                </span>
+                <span>{session.duration}m</span>
               </div>
-
-              {/* Progress */}
-              <div className="mt-4 pt-3 border-t border-border">
-                <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                  <div 
-                    className={cn(
-                      "h-full rounded-full transition-all duration-300",
-                      day.isCompleted ? "bg-success" : "bg-primary"
-                    )}
-                    style={{ 
-                      width: `${(day.sessions.filter(s => s.completed).length / day.sessions.length) * 100}%` 
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         ))}
       </div>
 
-      {/* View all CTA */}
-      {roadmapData.length > 8 && (
-        <div className="mt-6 text-center">
-          <Button variant="outline" onClick={() => setViewMode("designer")}>
-            View All {roadmapData.length} Days →
-          </Button>
+      {/* ================= REBALANCE MODAL ================= */}
+
+      {showRebalanceConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+          <div className="bg-card rounded-xl p-6 border">
+            <p className="mb-4">
+              Change daily limit to {pendingDailyLimit} minutes?
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowRebalanceConfirm(false)}
+              >
+                Cancel
+              </Button>
+
+              <Button
+  onClick={async () => {
+    if (!pendingDailyLimit) return;
+
+    await rebalanceActiveRoadmap(pendingDailyLimit);
+
+    setPendingDailyLimit(null);
+    setShowRebalanceConfirm(false);
+  }}
+>
+  Yes
+</Button>
+
+            </div>
+          </div>
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* Helper text */}
-      <p className="text-center text-sm text-muted-foreground mt-8">
-        💡 Click on any day card or use "Design Mode" to customize your schedule with drag & drop
-      </p>
+/* =====================================================
+   SMALL STAT CARD
+===================================================== */
+
+function StatCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="bg-card border rounded-xl p-4">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+        {icon}
+        {label}
+      </div>
+      <div className="text-lg font-bold">{value}</div>
     </div>
   );
 }
